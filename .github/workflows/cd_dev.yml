@@ -1,21 +1,26 @@
-name: CD - Development
+name: CD-Dev (Demo App)
 on:
   push:
     branches:
       - develop
+env:
+  SLACK_WEBHOOK: ${{ secrets.MSG_SLACK_WEBHOOK }}
+  SLACK_USERNAME: ${{ github.workflow }}
 jobs:
-  skip_check:
-    environment: development
-    runs-on: ubuntu-latest
+  skip_cd:
+    environment: dev
     env:
-      DISABLE_CD: ${{ secrets.DISABLE_CD }}
+      SKIP_CD: ${{ secrets.SKIP_CD }}
+    runs-on: ubuntu-latest
     steps:
       - name: Skip CD
-        if: ${{ env.DISABLE_CD }}
+        if: ${{ env.SKIP_CD == 'true' }}
         uses: andymckay/cancel-action@0.2
-  run_deployment:
-    needs: skip_check
-    environment: development
+  heroku_deployment:
+    needs: skip_cd
+    environment: dev
+    env:
+      HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -25,21 +30,15 @@ jobs:
         with:
           token: "${{ github.token }}"
           target_url: ${{ secrets.HEROKU_APP_URL }}"
-          environment: development
+          environment: dev
       - name: Login to Heroku Container registry
-        env:
-          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
         run: heroku container:login
       - name: Build and push
-        env:
-          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
         run: heroku container:push -a ${{ secrets.HEROKU_APP_NAME }} web
       - name: Release
-        env:
-          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
         run: heroku container:release -a ${{ secrets.HEROKU_APP_NAME }} web
       - name: Update deployment status (success)
-        if: success()
+        if: ${{ success() }}
         uses: chrnorm/deployment-status@releases/v1
         with:
           token: "${{ github.token }}"
@@ -47,15 +46,13 @@ jobs:
           state: "success"
           deployment_id: ${{ steps.deployment.outputs.deployment_id }}
       - name: Release Notification
-        if: success()
+        if: ${{ success() }}
         uses: rtCamp/action-slack-notify@v2.0.2
         env:
-          SLACK_WEBHOOK: ${{ secrets.MSG_SLACK_WEBHOOK }}
-          SLACK_USERNAME: CD(Dev) - Success
           SLACK_ICON_EMOJI: ":rocket:"
-          SLACK_MESSAGE: "Here: ${{ secrets.HEROKU_APP_URL }}"
+          SLACK_MESSAGE: ${{ github.workflow }} - Success ${{ secrets.HEROKU_APP_URL }}
       - name: Update deployment status (failure)
-        if: failure()
+        if: ${{ failure() }}
         uses: chrnorm/deployment-status@releases/v1
         with:
           token: "${{ github.token }}"
@@ -63,10 +60,9 @@ jobs:
           state: "failure"
           deployment_id: ${{ steps.deployment.outputs.deployment_id }}
       - name: Failure notification
-        if: failure()
+        if: ${{ failure() }}
         uses: rtCamp/action-slack-notify@v2.0.2
         env:
-          SLACK_WEBHOOK: ${{ secrets.MSG_SLACK_WEBHOOK }}
-          SLACK_USERNAME: CD(Dev) - Failed
           SLACK_ICON_EMOJI: ":boom:"
+          SLACK_MESSAGE: ${{ github.workflow }} - Failed
           SLACK_COLOR: danger
