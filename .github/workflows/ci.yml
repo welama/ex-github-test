@@ -13,12 +13,6 @@ jobs:
       SKIP_CI: ${{ secrets.SKIP_CI }}
     runs-on: ubuntu-latest
     steps:
-      - name: Echo environments
-        if: ${{ env.SKIP_CI == 'true' }}
-        run: echo "true [$SKIP_CI]"
-      - name: Echo environments
-        if: ${{ env.SKIP_CI != 'true' }}
-        run: echo "false [$SKIP_CI]"
       - name: Skip CI
         if: ${{ env.SKIP_CI == 'true' }}
         uses: andymckay/cancel-action@0.2
@@ -31,8 +25,7 @@ jobs:
         run: |
           docker-compose -f docker-compose.test.yml up -d
           sleep 30
-      - name: Show container information
-        run: docker ps
+          docker ps
       - name: Rubocop
         run: docker exec ${{ github.event.repository.name }}_web-test_1 sh -c "bundle exec rubocop"
       - name: Test
@@ -52,9 +45,14 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Build docker image for production usage
-        run: docker build -t $IMAGE_NAME:${{ github.sha }} -f Dockerfile .
-      - name: Show image information
-        run: docker image inspect $IMAGE_NAME:${{ github.sha }}
+        run: |
+          docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} -f Dockerfile .
+          docker image inspect ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker save ${{ env.IMAGE_NAME }}:${{ github.sha }} | gzip > ${{ env.IMAGE_NAME }}_${{ github.sha }}.tar.gz
+      - name: Upload image to artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          path: ${{ env.IMAGE_NAME }}_${{ github.sha }}.tar.gz
       - name: Failure notification
         if: ${{ failure() }}
         uses: rtCamp/action-slack-notify@v2.0.2
@@ -68,3 +66,4 @@ jobs:
         env:
           SLACK_ICON_EMOJI: ":thumbsup:"
           SLACK_MESSAGE: ${{ github.workflow }} - Success
+      

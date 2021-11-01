@@ -1,0 +1,70 @@
+name: CD-Prod (Demo App)
+on:
+  pull_request:
+    branches:
+      - master
+jobs:
+  skip_cd:
+    environment: prod
+    env:
+      SKIP_CD: ${{ secrets.SKIP_CD }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip CD
+        if: ${{ env.SKIP_CD == 'true' }}
+        uses: andymckay/cancel-action@0.2
+  heroku_deployment:
+    needs: skip_cd
+    environment: prod
+    env:
+      HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+      SLACK_WEBHOOK: ${{ secrets.MSG_SLACK_WEBHOOK }}
+      SLACK_USERNAME: ${{ github.workflow }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        region: ['US', 'TW']
+    steps:
+      - uses: actions/checkout@v2
+      - uses: chrnorm/deployment-action@releases/v1
+        name: Create GitHub deployment
+        id: deployment
+        with:
+          token: "${{ github.token }}"
+          target_url: ${{ secrets.HEROKU_APP_URL }}"
+          environment: dev
+      - name: Login to Heroku Container registry
+        run: heroku container:login
+      - name: Build and push
+        run: heroku container:push -a ${{ secrets[format('{0}_HEROKU_APP_NAME', matrix.region)] }} web
+      - name: Release
+        run: heroku container:release -a ${{ secrets[matrix.region'_HEROKU_APP_NAME'] }} web
+      - name: Update deployment status (success)
+        if: ${{ success() }}
+        uses: chrnorm/deployment-status@releases/v1
+        with:
+          token: "${{ github.token }}"
+          target_url: ${{ secrets[format('{0}_HEROKU_APP_URL', matrix.region)] }}"
+          state: "success"
+          deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+      - name: Release Notification
+        if: ${{ success() }}
+        uses: rtCamp/action-slack-notify@v2.0.2
+        env:
+          SLACK_ICON_EMOJI: ":rocket:"
+          SLACK_MESSAGE: ${{ github.workflow }} - Success ${{ secrets[format('{0}_HEROKU_APP_URL', matrix.region)] }}
+      - name: Update deployment status (failure)
+        if: ${{ failure() }}
+        uses: chrnorm/deployment-status@releases/v1
+        with:
+          token: "${{ github.token }}"
+          target_url: ${{ secrets[format('{0}_HEROKU_APP_URL', matrix.region)] }}"
+          state: "failure"
+          deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+      - name: Failure notification
+        if: ${{ failure() }}
+        uses: rtCamp/action-slack-notify@v2.0.2
+        env:
+          SLACK_ICON_EMOJI: ":boom:"
+          SLACK_MESSAGE: ${{ github.workflow }} - Failed
+          SLACK_COLOR: danger

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class JokesController < ApplicationController
+  before_action :set_region
   before_action :set_joke, only: %i[edit update destroy]
 
   # GET /jokes or /jokes.json
@@ -63,5 +64,15 @@ class JokesController < ApplicationController
   # Only allow a list of trusted parameters through.
   def joke_params
     params.require(:joke).permit(:title, :content)
+  end
+
+  def set_region
+    @region = case ENV['REGION']
+              when 'US' then '🇺🇸'
+              when 'TW' then '🇹🇼'
+              when 'Staging' then '🚀'
+              else
+                '🛠'
+              end
   end
 end
