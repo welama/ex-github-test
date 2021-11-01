@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+require 'net/http'
+
+begin
+  res = Net::HTTP.get_response(URI(ARGV[0]))
+  exit(res.code == '200' ? 0 : 1)
+rescue
+  exit 1
+end

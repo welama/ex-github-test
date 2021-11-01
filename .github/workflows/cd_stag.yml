@@ -1,0 +1,71 @@
+name: CD - Staging
+on:
+  pull_request:
+    branches:
+      - master
+jobs:
+  skip_check:
+    environment: staging
+    runs-on: ubuntu-latest
+    env:
+      DISABLE_CD: ${{ secrets.DISABLE_CD }}
+    steps:
+      - name: Skip CD
+        if: ${{ env.DISABLE_CD }}
+        uses: andymckay/cancel-action@0.2
+  run_heroku_deployment:
+    needs: run_check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: chrnorm/deployment-action@releases/v1
+        name: Create GitHub deployment
+        id: deployment
+        with:
+          token: "${{ github.token }}"
+          target_url: ${{ secrets.STAG_HEROKU_APP_URL }}"
+          environment: staging
+      - name: Login to Heroku Container registry
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+        run: heroku container:login
+      - name: Build and push
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+        run: heroku container:push -a ${{ secrets.STAG_HEROKU_APP_NAME }} web
+      - name: Release
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+        run: heroku container:release -a ${{ secrets.STAG_HEROKU_APP_NAME }} web
+      - name: Release Notification
+        if: success()
+        uses: rtCamp/action-slack-notify@v2.0.2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.MSG_SLACK_WEBHOOK }}
+          SLACK_USERNAME: CD - Stag (Heroku) - Release
+          SLACK_ICON_EMOJI: ":rocket:"
+          SLACK_MESSAGE: "Here: ${{ secrets.STAG_HEROKU_APP_URL }}"
+      - name: Failure notification
+        if: failure()
+        uses: rtCamp/action-slack-notify@v2.0.2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.MSG_SLACK_WEBHOOK }}
+          SLACK_USERNAME: CD - Stag (Heroku) - Build failed
+          SLACK_ICON_EMOJI: ":boom:"
+          SLACK_COLOR: danger
+      - name: Update deployment status (success)
+        if: success()
+        uses: chrnorm/deployment-status@releases/v1
+        with:
+          token: "${{ github.token }}"
+          target_url: ${{ secrets.STAG_HEROKU_APP_URL }}"
+          state: "success"
+          deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+      - name: Update deployment status (failure)
+        if: failure()
+        uses: chrnorm/deployment-status@releases/v1
+        with:
+          token: "${{ github.token }}"
+          target_url: ${{ secrets.STAG_HEROKU_APP_URL }}"
+          state: "failure"
+          deployment_id: ${{ steps.deployment.outputs.deployment_id }}

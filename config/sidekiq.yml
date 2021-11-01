@@ -1,0 +1,8 @@
+:verbose: false
+:concurrency: <%= ENV['BG_JOB_CONCURRENCY'] || 10 %>
+:timeout: <%= ENV['BG_JOB_TIMEOUT'] || 25 %>
+:queues:
+  - high
+  - default
+  - mailers
+  - low

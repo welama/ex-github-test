@@ -1,0 +1,55 @@
+name: CI (Demo App)
+on:
+  pull_request:
+    branches:
+      - develop
+      - master
+env:
+  SLACK_WEBHOOK: ${{ secrets.MSG_SLACK_WEBHOOK }}
+  SLACK_USERNAME: ${{ github.workflow }}
+jobs:
+  check_code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run docker-compose to prepare the testing environment
+        run: |
+          docker-compose -f docker-compose.test.yml up -d
+          sleep 30
+      - name: Show container information
+        run: docker ps
+      - name: Rubocop
+        run: docker exec ${{ github.event.repository.name }}_web-test_1 sh -c "bundle exec rubocop"
+      - name: Test
+        run: docker exec ${{ github.event.repository.name }}_web-test_1 sh -c "bin/rails test"
+      - name: Failure notification
+        if: ${{ failure() }}
+        uses: rtCamp/action-slack-notify@v2.0.2
+        env:
+          SLACK_ICON_EMOJI: ":boom:"
+          SLACK_MESSAGE: ${{ github.workflow }} - Failed (${{ github.job }})
+          SLACK_COLOR: danger
+  build_image:
+    needs: check_code
+    env:
+      IMAGE_NAME: demo-app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build docker image for production usage
+        run: docker build -t $IMAGE_NAME:${{ github.sha }} -f Dockerfile .
+      - name: Show image information
+        run: docker image inspect $IMAGE_NAME:${{ github.sha }}
+      - name: Failure notification
+        if: ${{ failure() }}
+        uses: rtCamp/action-slack-notify@v2.0.2
+        env:
+          SLACK_ICON_EMOJI: ":boom:"
+          SLACK_MESSAGE: ${{ github.workflow }} - Failed (${{ github.job }})
+          SLACK_COLOR: danger
+      - name: Success Notification
+        if: ${{ success() }}
+        uses: rtCamp/action-slack-notify@v2.0.2
+        env:
+          SLACK_ICON_EMOJI: ":thumbsup:"
+          SLACK_MESSAGE: ${{ github.workflow }} - Success
