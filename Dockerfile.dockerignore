@@ -1,0 +1,17 @@
+.git
+.gitignore
+Dockerfile
+Dockerfile.dev
+Dockerfile.test
+docker-compose.dev.yml
+docker-compose.test.yml
+.ruby-version
+node_modules
+test
+tmp
+db/*.sqlite3
+public/packs
+public/packs-test
+public/assets
+vendor/bundle
+

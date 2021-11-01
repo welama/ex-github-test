@@ -1,0 +1,3 @@
+dummy_job_for_test_usage:
+  cron: "*/5 * * * *"
+  class: "DummySleepyheadJob"

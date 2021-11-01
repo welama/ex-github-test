@@ -1,0 +1,14 @@
+name: 'notify-failure-slack'
+description: 'Send failure message to Slack'
+inputs:
+  message:
+    description: 'The extra message'
+    required: false
+runs:
+  using: "composite"
+  steps:
+    - uses: rtCamp/action-slack-notify@v2.2.0
+      env:
+        SLACK_ICON_EMOJI: ":boom:"
+        SLACK_MESSAGE: ${{ github.workflow }} - Failure (${{ github.job }}) ${{ inputs.message }}
+        SLACK_COLOR: danger

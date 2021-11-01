@@ -1,0 +1,30 @@
+version: "3.9"
+services:
+  db-test-server:
+    image: mysql:8.0.26
+    environment:
+      MYSQL_ROOT_PASSWORD: 123qwe
+      MYSQL_TEST_USER: mysql_test_user
+      MYSQL_TEST_PASSWORD: mysql_test_pw
+    volumes:
+      - ./.docker/setup_test_db.sh:/docker-entrypoint-initdb.d/00_setup_test_db.sh
+    cap_add:
+      - SYS_NICE
+  redis-test-server:
+    image: redis:6.0.6-alpine
+  web-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    image: demo-app:test
+    depends_on:
+      - db-test-server
+      - redis-test-server
+    environment:
+      DB_TEST_HOST: db-test-server
+      DB_TEST_PORT: 3306
+      REDIS_URL: redis://redis-test-server:6379
+    command: sh -c "sleep 30 && bin/rails db:prepare && bundle exec sidekiq -C config/sidekiq.yml"
+networks:
+  default:
+    name: demo-test-network

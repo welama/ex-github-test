@@ -1,0 +1,32 @@
+FROM ruby:3.0.2-alpine3.14
+
+LABEL name=demo-app
+ENV INSTALL_PATH=/app/ \
+    RAILS_ENV=test \
+    SECRET_KEY_BASE=6a12da0330246c126f5d6a2486b707033f2223745a0d08884785e298fb86357b064f0aaa11af69a22209c08652023626991e478314a2104e9505fef962d123ba \
+    REDIS_PROVIDER=REDIS_URL \
+    RAILS_SERVE_STATIC_FILES=true
+
+RUN rm -rf /var/cache/apk/* \
+  && rm -rf /tmp/* \
+  && apk update
+
+RUN apk add --no-cache --virtual .build-deps build-base yarn \
+  && apk add --no-cache nodejs tzdata libxslt-dev libxml2-dev mariadb-dev
+
+WORKDIR $INSTALL_PATH
+
+COPY Gemfile Gemfile.lock $INSTALL_PATH
+
+RUN gem install bundler \
+  && gem install foreman \
+  && bundle install
+
+COPY . $INSTALL_PATH
+
+RUN bin/rails assets:precompile
+
+RUN bin/rails tmp:clear \
+  && apk del .build-deps
+
+CMD bin/rails db:prepare && bundle exec sidekiq -C config/sidekiq.yml

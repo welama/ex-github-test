@@ -1,0 +1,69 @@
+name: CI (Demo App)
+on:
+  pull_request:
+    branches:
+      - develop
+      - master
+env:
+  SLACK_WEBHOOK: ${{ secrets.MSG_SLACK_WEBHOOK }}
+  SLACK_USERNAME: ${{ github.workflow }}
+jobs:
+  skip_ci:
+    env:
+      SKIP_CI: ${{ secrets.SKIP_CI }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip CI
+        if: ${{ env.SKIP_CI == 'true' }}
+        uses: andymckay/cancel-action@0.2
+  check_code:
+    needs: skip_ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run docker-compose to prepare the testing environment
+        run: |
+          docker-compose -f docker-compose.test.yml up -d
+          sleep 30
+          docker ps
+      - name: Rubocop
+        run: docker exec ${{ github.event.repository.name }}_web-test_1 sh -c "bundle exec rubocop"
+      - name: Test
+        run: docker exec ${{ github.event.repository.name }}_web-test_1 sh -c "bin/rails test"
+      - name: Failure notification
+        if: ${{ failure() }}
+        uses: rtCamp/action-slack-notify@v2.2.0
+        env:
+          SLACK_ICON_EMOJI: ":boom:"
+          SLACK_MESSAGE: ${{ github.workflow }} - Failed (${{ github.job }})
+          SLACK_COLOR: danger
+  build_image:
+    needs: check_code
+    env:
+      IMAGE_NAME: demo-app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build docker image for production usage
+        run: |
+          docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} -f Dockerfile .
+          docker image inspect ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker save ${{ env.IMAGE_NAME }}:${{ github.sha }} | gzip > ${{ env.IMAGE_NAME }}_${{ github.sha }}.tar.gz
+      - name: Upload image to artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          path: ${{ env.IMAGE_NAME }}_${{ github.sha }}.tar.gz
+      - name: Failure notification
+        if: ${{ failure() }}
+        uses: rtCamp/action-slack-notify@v2.2.0
+        env:
+          SLACK_ICON_EMOJI: ":boom:"
+          SLACK_MESSAGE: ${{ github.workflow }} - Failed (${{ github.job }})
+          SLACK_COLOR: danger
+      - name: Success Notification
+        if: ${{ success() }}
+        uses: rtCamp/action-slack-notify@v2.2.0
+        env:
+          SLACK_ICON_EMOJI: ":thumbsup:"
+          SLACK_MESSAGE: ${{ github.workflow }} - Success
+      
