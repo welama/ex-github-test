@@ -1,0 +1,56 @@
+version: "3.7"
+services:
+  db-server:
+    image: mysql:8.0.26
+    environment:
+      MYSQL_ROOT_PASSWORD: 123qwe
+      MYSQL_USER: mysql_user
+      MYSQL_PASSWORD: mysql_pw
+      MYSQL_DATABASE: mysql_db
+      MYSQL_TEST_USER: mysql_test_user
+      MYSQL_TEST_PASSWORD: mysql_test_pw
+    volumes:
+      - ./.docker/setup_test_db.sh:/docker-entrypoint-initdb.d/00_setup_test_db.sh
+      - demo-db:/var/lib/mysql
+    ports:
+      - "8000:3306"
+    cap_add:
+      - SYS_NICE
+  redis-server:
+    image: redis:6.0.6-alpine
+    ports:
+      - "8001:6379"
+  web-prod:
+    build: .
+    image: demo-app:prod
+    depends_on:
+      - db-server
+      - redis-server
+    environment:
+      DATABASE_URL: mysql2://mysql_user:mysql_pw@db-server:3306/mysql_db
+      REDIS_URL: redis://redis-server:6379
+    ports:
+      - "8080:80"
+    command: sh -c "sleep 30 && bin/rails db:migrate db:seed && foreman start"
+  web-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: demo-app:dev
+    depends_on:
+      - db-server
+      - redis-server
+    environment:
+      DATABASE_URL: mysql2://mysql_user:mysql_pw@db-server:3306/mysql_db
+      REDIS_URL: redis://redis-server:6379
+      DB_TEST_HOST: db-server
+      DB_TEST_PORT: 3306
+    volumes:
+      - ./:/app
+    ports:
+      - "8081:80"
+networks:
+  default:
+    name: demo-network
+volumes:
+  demo-db:

@@ -1,0 +1,35 @@
+<div class="container">
+  <% if notice.present? %>
+    <article class="message is-success">
+      <div class="message-body">
+        <%= notice %>
+      </div>
+    </article>
+  <% end %>
+  <h1 class="title is-1 mt-6 block">🤣 笑話集</h1>
+  <table class="table is-bordered mb-3 is-fullwidth">
+    <tbody>
+      <tr>
+        <td colspan="2">
+          <%= render 'form', joke: @joke %>
+        </td>
+      </tr>
+      <% @jokes.each do |joke| %>
+        <tr>
+          <td class="p-5">
+            <div class="block is-size-4"><%= joke.title %></div>
+            <div class="block is-size-5">
+              <pre class="has-background-white pl-0"><%= joke.content %></pre>
+            </div>
+          </td>
+          <td>
+            <div class="buttons">
+              <%= link_to '編輯', edit_joke_path(joke), class: 'button is-info is-light' %>
+              <%= link_to '刪除', joke, method: :delete, data: { confirm: '確定要刪除嗎？' }, class: 'button is-danger is-light' %>
+            </div>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
