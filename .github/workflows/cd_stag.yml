@@ -27,8 +27,8 @@ jobs:
         name: Create GitHub deployment
         id: deployment
         with:
-          token: "${{ github.token }}"
-          target_url: ${{ secrets.HEROKU_APP_URL }}"
+          token: ${{ github.token }}
+          target_url: ${{ secrets.HEROKU_APP_URL }}
           environment: dev
       - name: Login to Heroku Container registry
         run: heroku container:login
@@ -40,8 +40,8 @@ jobs:
         if: ${{ success() }}
         uses: chrnorm/deployment-status@releases/v1
         with:
-          token: "${{ github.token }}"
-          target_url: ${{ secrets.HEROKU_APP_URL }}"
+          token: ${{ github.token }}
+          target_url: ${{ secrets.HEROKU_APP_URL }}
           state: "success"
           deployment_id: ${{ steps.deployment.outputs.deployment_id }}
       - name: Release Notification
@@ -54,8 +54,8 @@ jobs:
         if: ${{ failure() }}
         uses: chrnorm/deployment-status@releases/v1
         with:
-          token: "${{ github.token }}"
-          target_url: ${{ secrets.HEROKU_APP_URL }}"
+          token: ${{ github.token }}
+          target_url: ${{ secrets.HEROKU_APP_URL }}
           state: "failure"
           deployment_id: ${{ steps.deployment.outputs.deployment_id }}
       - name: Failure notification
