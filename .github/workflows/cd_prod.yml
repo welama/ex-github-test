@@ -39,7 +39,7 @@ jobs:
         with:
           token: ${{ github.token }}
           target_url: ${{ secrets[matrix.app_url] }}
-          environment: dev
+          environment: prod
       - name: Login to Heroku Container registry
         run: heroku container:login
       - name: Build and push
