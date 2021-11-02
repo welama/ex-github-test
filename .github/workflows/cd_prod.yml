@@ -1,4 +1,4 @@
-name: CD-Prod (Demo App)
+name: CD-Prod
 on:
   push:
     branches:

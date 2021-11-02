@@ -1,4 +1,4 @@
-name: CD-Stag (Demo App)
+name: CD-Stag
 on:
   pull_request:
     branches:
