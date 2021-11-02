@@ -4,17 +4,7 @@ on:
     branches:
       - master
 jobs:
-  skip_cd:
-    environment: prod
-    env:
-      SKIP_CD: ${{ secrets.SKIP_CD }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Skip CD
-        if: ${{ env.SKIP_CD == 'true' }}
-        uses: andymckay/cancel-action@0.2
   heroku_deployment:
-    needs: skip_cd
     environment: prod
     env:
       HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}

@@ -8,16 +8,7 @@ env:
   SLACK_WEBHOOK: ${{ secrets.MSG_SLACK_WEBHOOK }}
   SLACK_USERNAME: ${{ github.workflow }}
 jobs:
-  skip_ci:
-    env:
-      SKIP_CI: ${{ secrets.SKIP_CI }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Skip CI
-        if: ${{ env.SKIP_CI == 'true' }}
-        uses: andymckay/cancel-action@0.2
   check_code:
-    needs: skip_ci
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
